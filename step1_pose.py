@@ -100,10 +100,10 @@ class Step1:
             self.debug_rn = None
 
         self.base_frame = self.create_frame(0, self.base_smpl, copy=False)
-        self.fp = h5py.File(self.out, 'w')
-        self.poses_dset = self.fp.create_dataset("pose", (self.num_frames, 72), 'f', chunks=True, compression="lzf")
-        self.trans_dset = self.fp.create_dataset("trans", (self.num_frames, 3), 'f', chunks=True, compression="lzf")
-        self.betas_dset = self.fp.create_dataset("betas", (10,), 'f', chunks=True, compression="lzf")
+
+        self.temp_poses_dset = [0 for i in range(self.num_frames)]
+        self.temp_trans_dset = [0 for i in range(self.num_frames)]
+        self.temp_betas_dset = [0 for i in range(self.num_frames)]
 
         num_init = 5
         indices_init = np.ceil(np.arange(num_init) * self.num_frames * 1. / num_init).astype(np.int)
@@ -113,9 +113,6 @@ class Step1:
             init_frames.append(self.create_frame(i, self.base_smpl))
 
         self.init(init_frames, self.body_height, self.b2m, self.debug_rn)
-
-    def __del__(self):
-        self.fp.close()
 
     def init(self, frames, body_height, b2m, viz_rn):
         betas = frames[0].smpl.betas
@@ -336,11 +333,11 @@ class Step1:
             # final fit
             self.fit_pose(current_frame, last_smpl, self.frustum, self.nohands, self.debug_rn)
 
-            self.poses_dset[i] = current_frame.smpl.pose.r
-            self.trans_dset[i] = current_frame.smpl.trans.r
+            self.temp_poses_dset[i] = current_frame.smpl.pose.r
+            self.temp_trans_dset[i] = current_frame.smpl.trans.r
 
             if i == begin:
-                self.betas_dset[:] = current_frame.smpl.betas.r
+                self.temp_betas_dset[:] = current_frame.smpl.betas.r
 
             last_smpl = current_frame.smpl
 
@@ -374,6 +371,18 @@ class Step1:
         for p in ps:
             p.join()
         log.info('Done.')
+
+        log.info('Write hdf5 begin')
+        with h5py.File(self.out, 'w') as fp:
+            poses_dset = fp.create_dataset("pose", (self.num_frames, 72), 'f', chunks=True, compression="lzf")
+            trans_dset = fp.create_dataset("trans", (self.num_frames, 3), 'f', chunks=True, compression="lzf")
+            betas_dset = fp.create_dataset("betas", (10,), 'f', chunks=True, compression="lzf")
+            for i in range(self.num_frames):
+                poses_dset[i] = self.temp_poses_dset[i]
+                trans_dset[i] = self.temp_trans_dset[i]
+            betas_dset[:] = self.temp_betas_dset[:]
+
+        log.info('Finally done!!')
         # thread.start_new_thread(self.handle_thread_inner, (i,))
         # pool.apply_async(self.handle_thread_inner, (i,))
         # pool.close()
@@ -436,4 +445,3 @@ if __name__ == '__main__':
     # pool.close()
     # pool.join()
     log.info('Done.')
-
