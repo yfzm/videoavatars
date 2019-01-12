@@ -371,13 +371,13 @@ class Step1:
             p = Process(target=self.handle_thread_inner, args=(i,))
             p.start()
             ps.append(p)
-            # thread.start_new_thread(self.handle_thread_inner, (i,))
-            # pool.apply_async(self.handle_thread_inner, (i,))
-        # pool.close()
-        # pool.join()
         for p in ps:
             p.join()
         log.info('Done.')
+        # thread.start_new_thread(self.handle_thread_inner, (i,))
+        # pool.apply_async(self.handle_thread_inner, (i,))
+        # pool.close()
+        # pool.join()
 
 
 if __name__ == '__main__':
@@ -436,5 +436,4 @@ if __name__ == '__main__':
     # pool.close()
     # pool.join()
     log.info('Done.')
-    while 1:
-        pass
+
