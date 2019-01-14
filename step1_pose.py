@@ -22,7 +22,7 @@ from models.bodyparts import faces_no_hands
 from vendor.smplify.sphere_collisions import SphereCollisions
 from vendor.smplify.robustifiers import GMOf
 # from multiprocessing import Pool
-from multiprocessing import Process
+from multiprocessing import Process, Manager
 
 THREAD_NUM = 2
 
@@ -101,9 +101,9 @@ class Step1:
 
         self.base_frame = self.create_frame(0, self.base_smpl, copy=False)
 
-        self.temp_poses_dset = [0 for i in range(self.num_frames)]
-        self.temp_trans_dset = [0 for i in range(self.num_frames)]
-        self.temp_betas_dset = [0 for i in range(self.num_frames)]
+        self.temp_poses_dset = Manager().list([0 for i in range(self.num_frames)])
+        self.temp_trans_dset = Manager().list([0 for i in range(self.num_frames)])
+        self.temp_betas_dset = Manager().list([0 for i in range(10)])
 
         num_init = 5
         indices_init = np.ceil(np.arange(num_init) * self.num_frames * 1. / num_init).astype(np.int)
@@ -378,6 +378,11 @@ class Step1:
             trans_dset = fp.create_dataset("trans", (self.num_frames, 3), 'f', chunks=True, compression="lzf")
             betas_dset = fp.create_dataset("betas", (10,), 'f', chunks=True, compression="lzf")
             for i in range(self.num_frames):
+                log.info('writing frame {}'.format(i))
+                # assert self.temp_poses_dset[i] is not None
+                # assert self.temp_trans_dset[i] is not None
+                # log.info('frame poses info: {}'.format(self.temp_poses_dset[i]))
+                # log.info('frame trans info: {}'.format(self.temp_trans_dset[i]))
                 poses_dset[i] = self.temp_poses_dset[i]
                 trans_dset[i] = self.temp_trans_dset[i]
             betas_dset[:] = self.temp_betas_dset[:]
